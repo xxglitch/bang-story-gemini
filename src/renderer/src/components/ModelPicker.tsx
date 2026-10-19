@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ArrowDownNarrowWide, ChevronDown, RefreshCw, Search, X } from 'lucide-react'
 import type { ModelOption } from '@shared/types'
-import { creditLabel, relativeTime, usdLabel } from '../lib/format'
+import { relativeTime, usdLabel } from '../lib/format'
 import { Spinner, cx } from './ui'
 
 function ctxLabel(n?: number | null): string | null {
@@ -60,7 +60,7 @@ export function ModelPicker({
   /** Which edge a menu wider than the button lines up with. */
   align?: 'left' | 'right'
   menuClassName?: string
-  /** Extra text in the list footer, e.g. what the listed credits pay for. */
+  /** Extra text in the list footer, e.g. what the listed prices pay for. */
   footerNote?: string
   /** A mark shown before each model name, e.g. its brand logo. */
   renderIcon?: (m: ModelOption) => ReactNode
@@ -108,14 +108,14 @@ export function ModelPicker({
       .map(([t]) => t)
   }, [models, tagFilters])
 
-  // Higgsfield lists carry credit estimates (creditUnit marks them); known prices can be sorted cheapest first.
-  const priced = models.some((m) => m.credits != null)
+  // Image and video lists carry estimated prices (costUnit marks them); known prices can be sorted cheapest first.
+  const priced = models.some((m) => m.usd != null)
 
   const filtered = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean)
     const list = models.filter((m) => matches(m, words) && tags.every((t) => m.tags.includes(t)))
     if (!cheapFirst) return list
-    return [...list].sort((a, b) => (a.credits ?? Infinity) - (b.credits ?? Infinity))
+    return [...list].sort((a, b) => (a.usd ?? Infinity) - (b.usd ?? Infinity))
   }, [models, query, tags, cheapFirst])
 
   const customId = query.trim()
@@ -299,17 +299,15 @@ export function ModelPicker({
                   <span className="flex shrink-0 flex-col items-end gap-0.5 text-[11.5px] text-ink-2">
                     {ctxLabel(m.contextLength) && <span className="font-mono">{ctxLabel(m.contextLength)} konteks</span>}
                     {price && <span className={cx('font-mono', price === 'Gratis' && 'font-semibold text-ok-ink')}>{price}</span>}
-                    {m.creditUnit !== undefined &&
-                      (m.credits === undefined ? (
-                        <Spinner className="mt-1 size-3.5 text-muted" />
-                      ) : m.credits === null ? (
-                        <span className="text-muted" title="Higgsfield tidak memberi perkiraan untuk model ini">
+                    {m.costUnit !== undefined &&
+                      (m.usd == null ? (
+                        <span className="text-muted" title="Harga model ini belum diketahui">
                           —
                         </span>
                       ) : (
                         <>
-                          <span className="font-mono text-[12.5px] font-semibold text-ink">{creditLabel(m.credits)} kr</span>
-                          <span className="font-mono text-muted">{[m.creditUnit, m.usd != null && usdLabel(m.usd)].filter(Boolean).join(' · ')}</span>
+                          <span className="font-mono text-[12.5px] font-semibold text-ink">≈ {usdLabel(m.usd)}</span>
+                          <span className="font-mono text-muted">{m.costUnit}</span>
                         </>
                       ))}
                   </span>

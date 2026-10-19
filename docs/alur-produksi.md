@@ -7,10 +7,10 @@ Ide cerita ──LLM──► Naskah (adegan + narasi) ──LLM──► Rencan
                                                      │
             ┌────────────────────────────────────────┼─────────────────────────┐
             ▼                                         ▼                         ▼
-   Lembar karakter (Higgsfield)          Gambar klip (Higgsfield)       Narasi satu rekaman (TTS)
+   Lembar karakter (Nano Banana)         Gambar klip (Nano Banana)      Narasi satu rekaman (TTS)
             └────────── referensi ──────────────────►│                         │
                                                      ▼                         ▼
-                                          Video AI (opsional)        Potong per adegan + Whisper
+                                          Video AI (Veo, opsional)        Potong per adegan + Whisper
                                                      └──────────► Editor ◄─────┘
                                                                      │
                                                                   FFmpeg → MP4

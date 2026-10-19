@@ -16,7 +16,7 @@ import {
   SlidersHorizontal,
   Trash2
 } from 'lucide-react'
-import { HF_IMAGE_MODELS, HF_VIDEO_MODELS } from '@shared/higgsfield'
+import { IMAGE_MODELS, VIDEO_MODELS } from '@shared/media'
 import { LANGUAGES, LLM_PROVIDERS } from '@shared/models'
 import type { ApiProvider, AppSettings, KeyStatus, KeyTestResult, LlmProvider, TtsProvider } from '@shared/types'
 import { Logo } from '../components/Logo'
@@ -506,41 +506,25 @@ function TtsSection({ settings, statusOf, onChanged, onSettings }: { settings: A
   )
 }
 
-function HiggsfieldSection({ status, onChanged }: { status?: KeyStatus; onChanged: () => void }) {
+function MediaSection({ status }: { status?: KeyStatus }) {
   return (
     <>
-      <SectionTitle icon={<ImageIcon className="size-5" />} title="Gambar dan video" sub="Higgsfield membuat gambar klip, lembar karakter, dan video AI." />
+      <SectionTitle icon={<ImageIcon className="size-5" />} title="Gambar dan video" sub="Google Gemini membuat gambar klip, lembar karakter, dan video AI." />
       <Card>
         <div className="flex items-center gap-3">
-          <ProviderLogo id="higgsfield" />
+          <ProviderLogo id="gemini" />
           <div className="flex flex-1 flex-col">
-            <span className="text-base font-bold">Higgsfield</span>
-            <span className="text-[13px] text-ink-2">GPT Image 2.5, Kling, Seedance, dan model lain dari akun Higgsfield kamu</span>
+            <span className="text-base font-bold">Google Gemini</span>
+            <span className="text-[13px] text-ink-2">Nano Banana untuk gambar, Veo untuk video. Memakai kunci Gemini yang sama dengan cerita dan suara.</span>
           </div>
           <StatusBadge status={status} />
         </div>
-        <KeyForm
-          provider="higgsfield"
-          name="Higgsfield"
-          status={status}
-          placeholder="Tempel hasil tombol Copy API key"
-          hint={
-            <>
-              Di console Higgsfield, buka API Keys lalu klik <strong className="text-ink">Copy API key</strong> dan tempel di sini. Formatnya{' '}
-              <code className="rounded bg-sand px-1 font-mono text-xs">KEY_ID:KEY_SECRET</code>. Kalau kamu memegang Key ID dan Secret terpisah, gabungkan
-              dengan titik dua.
-            </>
-          }
-          help="Kunci dicek dengan permintaan estimasi biaya, tanpa memakai kredit."
-          link="https://higgsfield.ai/s/higgsfield-api-yt-bangtutorial-lPMrHK"
-          linkLabel="Buka console Higgsfield"
-          onChanged={onChanged}
-        />
         <p className="flex items-start gap-2.5 border-t border-dashed border-line pt-4 text-[13px] leading-relaxed text-ink-2">
           <Film className="mt-0.5 size-4 shrink-0" />
           <span>
-            Semua {HF_IMAGE_MODELS.length} model gambar dan {HF_VIDEO_MODELS.length} model video Higgsfield bisa dipakai. Modelnya dipilih per proyek
-            di langkah <strong className="text-ink">Ide cerita</strong>, bagian Model AI.
+            {IMAGE_MODELS.length} model gambar dan {VIDEO_MODELS.length} model video bisa dipakai. Modelnya dipilih per proyek di langkah{' '}
+            <strong className="text-ink">Ide cerita</strong>, bagian Model AI. Veo dan sebagian model gambar butuh akun Google AI dengan penagihan
+            (billing) aktif, jadi kunci gratis bisa ditolak untuk video.
           </span>
         </p>
       </Card>
@@ -617,7 +601,7 @@ export function Settings() {
                 </div>
                 <LlmSection settings={settings} statusOf={statusOf} onChanged={reload} onSettings={setSettings} />
                 <TtsSection settings={settings} statusOf={statusOf} onChanged={reload} onSettings={setSettings} />
-                <HiggsfieldSection status={statusOf('higgsfield')} onChanged={reload} />
+                <MediaSection status={statusOf('gemini')} />
                 <WhisperSection settings={settings} onSettings={setSettings} />
               </>
             )}

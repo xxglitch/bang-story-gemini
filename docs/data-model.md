@@ -45,7 +45,7 @@ menjalankannya.
 | `durationSec`, `language`, `aspectRatio` | target durasi, bahasa naskah/suara, `16:9` atau `9:16` |
 | `styleId` | gaya visual (`src/shared/styles.ts`, 20 gaya) |
 | `ttsProvider`, `ttsVoice` | `gemini` atau `elevenlabs` + ID suara |
-| `imageModel`, `videoModel`, `videoResolution` | model Higgsfield per proyek (null = bawaan aplikasi) |
+| `imageModel`, `videoModel`, `videoResolution` | model gambar (Nano Banana) dan video (Veo) per proyek (null = bawaan aplikasi) |
 | `status`, `step` | `draft`/`script`/`storyboard`/`editing`/`exported`; langkah 1 Ide, 2 Naskah, 3 Storyboard, 4 Editor |
 | `coverAssetId` | gambar sampul kartu proyek |
 | `editor` | `EditorSettings` (JSON), lihat di bawah |
@@ -94,7 +94,7 @@ Tambahkan di semua tempat berikut, atau data akan hilang diam-diam:
 | `kind` | `image`, `video`, `audio`, `music`, `overlay`, `export` |
 | `clipId` / `characterId` | pemiliknya (riwayat versi per klip/pemeran) |
 | `provider`, `model`, `prompt` | asal file; untuk audio narasi `prompt` = teks narasi saat direkam |
-| `remoteId`, `remoteUrl` | ID permintaan dan URL hasil di Higgsfield |
+| `remoteId`, `remoteUrl` | `remoteId` = nama operasi Veo untuk video (kosong untuk gambar); `remoteUrl` tidak dipakai lagi (aset lama dari Higgsfield masih memilikinya) |
 | `localPath` | path relatif di folder proyek; `url` = `studio://asset/...` |
 | `durationMs`, `width`, `height` | hasil probe FFmpeg |
 | `meta` | JSON bebas, lihat di bawah |
@@ -109,7 +109,7 @@ Tambahkan di semua tempat berikut, atau data akan hilang diam-diam:
 | `voice`, `take` | ID suara dan ID rekaman utuh tempat potongan ini berasal |
 | `editedWords` | `true` kalau teks caption diedit manual |
 
-`meta.uploadedUrl`/`uploadedAt` dipakai untuk menggunakan ulang file yang sudah diunggah ke Higgsfield.
+Aset lama dari Higgsfield tetap bisa dipakai: `provider` bernilai `higgsfield` dan `meta.uploadedUrl` diabaikan, karena Gemini menerima gambar langsung dari file lokal.
 
 Narasi dianggap **basi** (perlu direkam ulang) kalau `asset.prompt` berbeda dari `clip.narration`.
 

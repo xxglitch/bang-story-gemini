@@ -5,7 +5,6 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron'
 import type {
   ApiProvider,
   AppSettings,
-  AspectRatio,
   ExportOptions,
   KeyTestResult,
   ModelSource,
@@ -17,8 +16,6 @@ import type {
 } from '@shared/types'
 import { startExport } from './exporter'
 import {
-  estimateCredits,
-  forgetEstimates,
   generateCharacterSheet,
   generateClipImage,
   generateClipTts,
@@ -51,7 +48,6 @@ import { dropCache, getSettings, setSettings } from './settings'
 import { probeDurationMs, probeSize } from './services/audio'
 import * as eleven from './services/elevenlabs'
 import * as gemini from './services/gemini'
-import * as hf from './services/higgsfield'
 import * as llm from './services/llm'
 import { generateScript, generateVisuals, generateMusicPrompt } from './story'
 
@@ -70,7 +66,6 @@ function handle(channel: string, fn: Handler): void {
 }
 
 async function testProvider(provider: ApiProvider, key?: string): Promise<KeyTestResult> {
-  if (provider === 'higgsfield') return hf.testCredentials(key)
   if (provider === 'elevenlabs') return eleven.testKey(key)
   return llm.testLlm(provider, key)
 }
@@ -110,9 +105,6 @@ export function registerIpc(): void {
   handle('whisper:remove', () => removeModel())
   handle('whisper:openFolder', () => openModelFolder())
   handle('generate:cancel', (jobId: string) => cancelJob(jobId))
-  handle('generate:estimate', (kind: 'image' | 'video', modelId: string, aspect: AspectRatio, seconds?: number, resolution?: string | null) =>
-    estimateCredits(kind, modelId, aspect, seconds, resolution)
-  )
 
   handle('assets:setActive', (clipId: string, assetId: string) => setActiveAsset(clipId, assetId))
   handle('clips:split', (clipId: string, atMs: number) => splitClip(clipId, Number(atMs)))
@@ -190,7 +182,6 @@ export function registerIpc(): void {
     setSecret(provider, clean)
     dropCache(`models:${provider}`)
     if (provider === 'gemini') dropCache('models:gemini-tts')
-    if (provider === 'higgsfield') forgetEstimates()
     const result = await testProvider(provider, clean)
     recordCheck(provider, result.ok, result.message)
     return result
@@ -208,7 +199,6 @@ export function registerIpc(): void {
   handle('settings:clearKey', (provider: ApiProvider) => {
     clearSecret(provider)
     dropCache(`models:${provider}`)
-    if (provider === 'higgsfield') forgetEstimates()
     if (provider === 'custom') setSettings({ customBaseUrl: '' })
   })
   handle('models:list', (source: ModelSource, refresh?: boolean) => llm.listModels(source, !!refresh))

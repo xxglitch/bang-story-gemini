@@ -8,6 +8,12 @@ Cara menaikkan versi ada di [docs/pengembangan.md](docs/pengembangan.md#versi-da
 
 ## [Belum dirilis]
 
+### Diubah
+- Gambar, lembar karakter, dan video AI sekarang dibuat oleh Google Gemini saja (Nano Banana dan Veo 3.1), dengan
+  satu kunci Gemini. Higgsfield tidak lagi dipakai: kunci, katalog 48 model, dan estimasi kredit dihapus.
+- Perkiraan biaya model sekarang berupa harga dolar dari tabel harga di `src/shared/media.ts`, bukan kredit.
+- Proyek lama yang memilih model Higgsfield otomatis memakai model bawaan baru. Gambar dan video lama tetap utuh.
+
 ## [1.0.0] - 2026-10-02
 
 Rilis pertama Bang Story (sebelumnya bernama Studio Cerita).

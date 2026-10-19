@@ -2,7 +2,7 @@ export type ProjectStatus = 'draft' | 'script' | 'storyboard' | 'editing' | 'exp
 export type AspectRatio = '16:9' | '9:16'
 export type TtsProvider = 'gemini' | 'elevenlabs'
 export type LlmProvider = 'gemini' | 'openrouter' | 'groq' | 'custom'
-export type ApiProvider = 'higgsfield' | 'gemini' | 'elevenlabs' | 'openrouter' | 'groq' | 'custom'
+export type ApiProvider = 'gemini' | 'elevenlabs' | 'openrouter' | 'groq' | 'custom'
 /** Where a live model list comes from: an LLM provider, or a TTS catalog. */
 export type ModelSource = LlmProvider | 'gemini-tts' | 'elevenlabs'
 export type MotionType = 'camera' | 'video'
@@ -102,7 +102,7 @@ export interface Project {
   styleId: string
   ttsProvider: TtsProvider
   ttsVoice: string
-  /** Higgsfield endpoint ids; null falls back to the app default. */
+  /** Gemini image and Veo video model ids; null falls back to the app default. */
   imageModel: string | null
   videoModel: string | null
   /** One of the video model's resolutions, e.g. "720p"; null or unsupported uses the default (1080p when offered). */
@@ -287,17 +287,11 @@ export interface AppSettings {
   customBaseUrl: string
   geminiTtsModel: string
   elevenModel: string
-  /** Higgsfield models for new projects: the last ones picked in the Idea step. */
+  /** Image and video models for new projects: the last ones picked in the Idea step. */
   imageModel: string
   videoModel: string
   /** Time captions against the real voice with Whisper after narration is made (when the model is present). */
   whisperAuto: boolean
-}
-
-/** What one Higgsfield request would cost, from the API's estimate endpoint. */
-export interface CreditEstimate {
-  credits: number
-  usd: number | null
 }
 
 /** The local Whisper model used to time caption words. */
@@ -320,11 +314,10 @@ export interface ModelOption {
   tags: string[]
   /** Model family, e.g. "Kling", for a brand mark next to the name. */
   family?: string
-  /** Higgsfield credits (and dollars) for one request; undefined while unknown, null when it cannot be estimated. */
-  credits?: number | null
+  /** Estimated dollars for one request, when the price is known. */
   usd?: number | null
-  /** What the credits pay for, e.g. "10 dtk". */
-  creditUnit?: string
+  /** What the price pays for, e.g. "8 dtk" or "per gambar". */
+  costUnit?: string
 }
 
 export interface ModelList {

@@ -14,12 +14,10 @@ Pengguna memasukkan kuncinya sendiri di **Pengaturan › Layanan AI dan kunci**.
 - `requireSecret(provider)` melempar error berbahasa Indonesia kalau kunci belum ada.
 - `revealSecret` hanya dipanggil tombol "tampilkan kunci" di Pengaturan.
 - **Jangan pernah** menulis kunci ke log, pesan error, file, URL, atau mengirimnya ke layanan lain.
-- Mengganti kunci Higgsfield menghapus cache estimasi kredit (`forgetEstimates`).
 
 | Penyedia (`ApiProvider`) | Dipakai untuk |
 |---|---|
-| `higgsfield` | gambar, lembar karakter, video |
-| `gemini` | LLM (naskah/visual) dan Gemini TTS |
+| `gemini` | gambar, lembar karakter, video (Veo), LLM (naskah/visual), dan Gemini TTS |
 | `elevenlabs` | TTS |
 | `openrouter`, `groq`, `custom` | LLM lewat API kompatibel OpenAI |
 
@@ -43,45 +41,37 @@ Pengguna memasukkan kuncinya sendiri di **Pengaturan › Layanan AI dan kunci**.
 
 Narasi selalu dibuat satu rekaman utuh lalu dipotong. Lihat [alur-produksi.md](alur-produksi.md#4-narasi-srcmainnarrationts).
 
-## Higgsfield (`services/higgsfield.ts`, `shared/higgsfield.ts`)
+## Gambar dan video (`services/geminiMedia.ts`, `shared/media.ts`)
 
-- Base URL `https://api.higgsfield.ai`, header `Authorization: Key <kunci>`.
-- Alur: `submit(endpoint, body)` → polling `getStatus` → unduh hasil. `uploadFile` mengunggah gambar referensi
-  (lembar karakter, gambar klip untuk video).
-- `estimate(endpoint, body)` memanggil `/estimate/<endpoint>` → `{ credits, usd }`, dicache 24 jam di tabel `cache`.
-  Endpoint ini gratis (tidak memakai kredit). API Higgsfield tidak punya daftar harga maupun endpoint saldo, jadi
-  biaya per model selalu diambil dari sini.
-- Pesan error dibuat ramah (`friendly`): kunci salah, kredit habis, terlalu banyak proses, model tidak tersedia.
-- Untuk pengembangan, `STUDIO_HF_BASE` bisa diarahkan ke server tiruan (mock) supaya UI bisa diuji tanpa kredit.
+Semuanya memakai kunci Gemini yang sama. Tidak ada kunci atau layanan terpisah.
 
-### Katalog model (`src/shared/higgsfield-catalog.json`)
+- **Gambar dan lembar karakter**: Nano Banana lewat `generateContent` (`@google/genai`) dengan
+  `responseModalities: ['IMAGE']` dan `imageConfig` (rasio, ukuran 1K/2K/4K). Satu permintaan langsung membalas
+  gambarnya, jadi progresnya hanya perkiraan waktu (`withProgress` di `generation.ts`). Lembar karakter dikirim
+  sebagai gambar inline sebelum prompt (maks 6, supaya muatan permintaan tidak membengkak).
+- **Video**: Veo lewat REST `models/<id>:predictLongRunning` dengan gambar klip sebagai frame pertama. Operasi dipolling
+  (`waitForVideo`, tiap ±5 detik) sampai selesai, lalu file diunduh dari URI-nya (`downloadVideo`, kunci hanya dikirim
+  ke `*.googleapis.com`). Nama operasi disimpan di job (`remote_id`), jadi `resumeJobs()` bisa melanjutkan polling
+  setelah aplikasi dibuka ulang. Operasi Veo tidak bisa dibatalkan di sisi Google; membatalkan job hanya berhenti menunggu.
+- Aturan Veo yang dipakai di `fitDuration`: durasi 4, 6, atau 8 detik; 1080p dan 4K hanya 8 detik; resolusi 4K
+  tidak ada di Veo 3.1 Lite. Veo selalu membuat suara sendiri, jadi setiap prompt diakhiri `NO_MUSIC`.
+- Veo dan sebagian model gambar butuh akun Google AI dengan penagihan aktif. Pesan error 401/403/404 menyebutnya
+  (`fromStatus`). Error 429 dan 5xx dicoba ulang sampai 5 kali.
+- Filter keamanan: gambar yang ditolak (`finishReason`/`blockReason`) dan video yang disaring
+  (`raiMediaFilteredReasons`) menjadi pesan berbahasa Indonesia.
 
-48 model: 14 model gambar (teks ke gambar) dan 34 model video yang bisa menganimasikan gambar klip. Model yang butuh
-video masukan (edit video, motion control) atau hanya teks-ke-video sengaja tidak dimasukkan. Seedream belum tersedia
-di API Higgsfield (hanya di aplikasi webnya). Satu entri:
+### Katalog model dan harga (`src/shared/media.ts`)
 
-```json
-{
-  "id": "kling-video/v3.0/std/image-to-video",
-  "name": "Kling 3.0 · Standard · Image to video",
-  "family": "Kling",
-  "kind": "video",
-  "input": { "field": "image_url", "mode": "first-frame", "max": 1 },
-  "required": ["image_url"],
-  "props": { "prompt": { "type": "string" }, "duration": { "type": "integer", "minimum": 3, "maximum": 15 }, "sound": { "enum": ["on", "off"] } },
-  "durations": { "min": 3, "max": 15 },
-  "tags": ["Kling"]
-}
-```
+Daftar kecil di kode, bukan JSON dari API: 4 model gambar (Nano Banana 2.1, 2, Pro, 2 Lite) dan 3 model video
+(Veo 3.1 Lite, Fast, penuh). Satu entri memuat id model, resolusi, durasi, dan harga USD per gambar atau per detik
+video. Harga hanya untuk perkiraan di layar (`estimateUsd`); periksa
+<https://ai.google.dev/gemini-api/docs/pricing> saat memperbarui. Harga Nano Banana Pro dan Veo 3.1 Fast belum dicek
+ulang ke halaman resmi.
 
-- `input.field`/`mode`/`max`: tempat gambar referensi atau frame pertama dikirim, dan berapa banyak.
-- `props`: skema parameter dari dokumentasi Higgsfield. `imageBody`/`videoBody` di `shared/higgsfield.ts`
-  mengisinya secara umum: rasio, resolusi, kualitas, durasi, mematikan `enhance_prompt`, `prompt_extend`, dan audio.
-- `durations`: rentang (`min`/`max`) atau daftar (`values`) durasi video.
-- **Menambah model**: tambahkan entri baru dengan format yang sama dari dokumentasi API Higgsfield
-  (`https://docs.higgsfield.ai/docs/llms.txt`), lalu pastikan `imageBody`/`videoBody` tidak melempar error
-  "butuh <field>" (`checkRequired`). Ikon keluarga model diatur di `components/ModelLogo.tsx`.
-- Model bawaan: `DEFAULT_IMAGE_MODEL` dan `DEFAULT_VIDEO_MODEL` di `shared/higgsfield.ts`.
+- **Menambah model**: tambahkan entri di `IMAGE_MODELS` atau `VIDEO_MODELS`. Id model harus persis seperti di
+  dokumentasi Gemini API. Ikon keluarga model diatur di `components/ModelLogo.tsx`.
+- Model bawaan: `DEFAULT_IMAGE_MODEL` dan `DEFAULT_VIDEO_MODEL`. Id model yang tidak dikenal (misalnya dari
+  proyek lama yang memakai model Higgsfield) otomatis jatuh ke model bawaan.
 
 ## Whisper lokal (`src/main/whisper.ts`)
 

@@ -18,7 +18,7 @@ import {
   Trash2,
   Volume2
 } from 'lucide-react'
-import { effectiveResolution, fitDuration, getImageModel, getVideoModel } from '@shared/higgsfield'
+import { effectiveResolution, estimateUsd, fitDuration, getImageModel, getVideoModel } from '@shared/media'
 import { CAMERA_PRESETS, MOTION_STRENGTHS, cameraAt, cameraCss } from '@shared/motion'
 import { needsVisual } from '@shared/script'
 import { geminiVoiceName, geminiVoiceTone } from '@shared/models'
@@ -27,7 +27,7 @@ import { AutoTextarea } from '../../components/AutoTextarea'
 import { CharacterAvatar } from '../../components/CharacterAvatar'
 import { ClipVisual } from '../../components/ClipVisual'
 import { Badge, Button, Chip, IconButton, Menu, Progress, Segmented, confirmDialog, cx, inputCls } from '../../components/ui'
-import { clipNumber, errorText, mmss, secLabel } from '../../lib/format'
+import { clipNumber, errorText, mmss, secLabel, usdLabel } from '../../lib/format'
 import { useNarration } from '../../lib/useNarration'
 import { useApp } from '../../store/app'
 import { isRunning, jobFor, useProject } from '../../store/project'
@@ -339,7 +339,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
             {(
               [
                 { id: 'camera', title: 'Gerak kamera', sub: 'Gratis · dirender di komputer', icon: <Move className="size-[22px]" />, subCls: 'text-ok-ink' },
-                { id: 'video', title: 'Video AI', sub: 'Higgsfield · pakai kredit', icon: <Film className="size-[22px]" />, subCls: 'text-ink-2' }
+                { id: 'video', title: 'Video AI', sub: 'Google Veo · berbayar', icon: <Film className="size-[22px]" />, subCls: 'text-ink-2' }
               ] as const
             ).map((o) => {
               const on = clip.motionType === o.id
@@ -397,7 +397,7 @@ function ClipPanel({ clip, index, total }: { clip: Clip; index: number; total: n
                 <div className="flex items-center gap-1.5 text-xs text-ink-2">
                   <Film className="size-3.5 shrink-0" />
                   <span className="truncate">
-                    {getVideoModel(project.videoModel).name} · video {fitDuration(getVideoModel(project.videoModel), clip.durationMs / 1000)} detik
+                    {getVideoModel(project.videoModel).name} · video {fitDuration(getVideoModel(project.videoModel), clip.durationMs / 1000, project.videoResolution)} detik
                     {effectiveResolution(getVideoModel(project.videoModel), project.videoResolution) &&
                       ` · ${effectiveResolution(getVideoModel(project.videoModel), project.videoResolution)}`}
                   </span>
@@ -450,8 +450,6 @@ export function StoryboardStep() {
   const { toast } = useApp()
   /** A character id, "new" for an unsaved one, or null. */
   const [openChar, setOpenChar] = useState<string | null>(null)
-  const [credits, setCredits] = useState<number | null>(null)
-  const [videoCredits, setVideoCredits] = useState<number | null>(null)
   const [planning, setPlanning] = useState(false)
   const lastNarration = useRef<string | null>(null)
 
@@ -463,12 +461,7 @@ export function StoryboardStep() {
     lastNarration.current = key
   }, [jobs])
 
-  useEffect(() => {
-    if (project)
-      void window.api.generate
-        .estimate('image', getImageModel(project.imageModel).id, project.aspectRatio)
-        .then((e) => setCredits(e?.credits ?? null))
-  }, [project?.id, project?.imageModel, project?.aspectRatio])
+  const imageUsd = useMemo(() => (project ? estimateUsd(getImageModel(project.imageModel)) : null), [project?.imageModel])
 
   const stats = useMemo(() => {
     const imgs = clips.filter((c) => c.imageAssetId).length
@@ -479,28 +472,13 @@ export function StoryboardStep() {
     return { imgs, voices, needImg, videoRunning, needVideo, total: clips.reduce((n, c) => n + c.durationMs, 0) }
   }, [clips, jobs])
 
-  // Video length follows each clip's voice, so the cost is estimated per video length and summed.
-  const videoLengths = useMemo(() => {
-    if (!project) return ''
+  // Video length follows each clip's voice, so the price is estimated per clip and summed.
+  const videoUsd = useMemo(() => {
+    if (!project || !stats.needVideo.length) return null
     const model = getVideoModel(project.videoModel)
-    return stats.needVideo.map((c) => fitDuration(model, c.durationMs / 1000) ?? 5).join(',')
-  }, [stats.needVideo, project?.videoModel])
-  useEffect(() => {
-    if (!project || !videoLengths) return setVideoCredits(null)
-    const lengths = videoLengths.split(',').map(Number)
-    const unique = [...new Set(lengths)]
-    const model = getVideoModel(project.videoModel).id
-    let live = true
-    void Promise.all(unique.map((s) => window.api.generate.estimate('video', model, project.aspectRatio, s, project.videoResolution))).then((list) => {
-      if (!live) return
-      if (list.some((e) => e?.credits == null)) return setVideoCredits(null)
-      const bySec = new Map(unique.map((s, i) => [s, list[i]!.credits]))
-      setVideoCredits(lengths.reduce((n, s) => n + (bySec.get(s) ?? 0), 0))
-    })
-    return () => {
-      live = false
-    }
-  }, [videoLengths, project?.aspectRatio, project?.videoResolution])
+    const resolution = effectiveResolution(model, project.videoResolution)
+    return stats.needVideo.reduce((sum, c) => sum + (estimateUsd(model, resolution, c.durationMs / 1000) ?? 0), 0)
+  }, [stats.needVideo, project?.videoModel, project?.videoResolution])
 
   if (!project) return null
   const selIndex = Math.max(0, clips.findIndex((c) => c.id === selectedClipId))
@@ -529,7 +507,7 @@ export function StoryboardStep() {
       title: `Jadikan ${n} klip video AI?`,
       body:
         `Setiap gambar klip dianimasikan dengan ${getVideoModel(project!.videoModel).name}, panjangnya mengikuti suara narasi klip itu.` +
-        (videoCredits != null ? ` Perkiraan biaya ${Math.round(videoCredits * 10) / 10} kredit Higgsfield.` : '') +
+        (videoUsd != null ? ` Perkiraan biaya ${usdLabel(videoUsd)} dari Google.` : '') +
         ' Klip yang sudah punya video tidak dibuat ulang.',
       confirm: `Buat ${n} video`
     })
@@ -618,8 +596,8 @@ export function StoryboardStep() {
           onClick={() => void bulk(() => window.api.generate.missingImages(project.id))}
         >
           Generate {stats.needImg} gambar
-          {credits != null && stats.needImg > 0 && (
-            <span className="font-normal text-ink-2">≈ {Math.round(credits * stats.needImg * 10) / 10} kr</span>
+          {imageUsd != null && stats.needImg > 0 && (
+            <span className="font-normal text-ink-2">≈ {usdLabel(imageUsd * stats.needImg)}</span>
           )}
         </Button>
         {readyForVideo && (
@@ -636,8 +614,8 @@ export function StoryboardStep() {
               : stats.needVideo.length === 0
                 ? 'Semua klip sudah video'
                 : `Jadikan ${stats.needVideo.length} video`}
-            {stats.videoRunning === 0 && videoCredits != null && stats.needVideo.length > 0 && (
-              <span className="font-normal text-white/80">≈ {Math.round(videoCredits * 10) / 10} kr</span>
+            {stats.videoRunning === 0 && videoUsd != null && stats.needVideo.length > 0 && (
+              <span className="font-normal text-white/80">≈ {usdLabel(videoUsd)}</span>
             )}
           </Button>
         )}

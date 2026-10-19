@@ -11,7 +11,7 @@
 | Database | SQLite lewat better-sqlite3 |
 | Video/audio | FFmpeg (`ffmpeg-static`), libass untuk caption |
 | Pengenal suara | whisper.cpp (`resources/whisper/whisper-cli.exe`) + model Whisper Small |
-| AI | Gemini (`@google/genai`), API OpenAI-compatible (OpenRouter, Groq, custom), ElevenLabs, Higgsfield |
+| AI | Gemini (`@google/genai`), API OpenAI-compatible (OpenRouter, Groq, custom), ElevenLabs |
 
 ## Tiga proses
 
@@ -60,13 +60,13 @@ renderer lewat `event:job` (progres, pesan, error).
 
 | Antrean | Batas paralel | Dipakai untuk |
 |---|---|---|
-| `higgsfield` | 3 | gambar, lembar karakter, video |
+| `media` | 3 | gambar, lembar karakter, video (Gemini) |
 | `tts` | 2 | narasi, TTS per klip |
 | `whisper` | 1 | sinkron caption (Whisper memakai banyak core CPU) |
 | `export` | 1 | ekspor MP4 |
 
 Setiap job punya `AbortController` sehingga bisa dibatalkan (`generate:cancel`). Saat aplikasi dibuka lagi,
-`resumeJobs()` melanjutkan permintaan Higgsfield yang sudah terkirim; job lain yang terputus ditandai gagal.
+`resumeJobs()` melanjutkan polling operasi video Veo yang sudah terkirim; job lain yang terputus (termasuk gambar, yang dijawab dalam satu permintaan) ditandai gagal.
 
 ## Penyimpanan
 

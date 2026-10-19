@@ -96,10 +96,12 @@ export function Home() {
       return !!k?.configured && k.lastOk !== false
     }
     const issues: { what: string; blocks: string }[] = []
-    if (!ok('higgsfield')) issues.push({ what: 'kunci Higgsfield', blocks: 'gambar' })
+    // One Gemini key also draws the pictures and video, so it is checked even when another service writes the story.
     const llm = appSettings.llmProvider
-    if (!ok(llm)) issues.push({ what: `kunci ${llmName(llm)}`, blocks: 'cerita' })
-    else if (!appSettings.llmModels[llm]) issues.push({ what: `model ${llmName(llm)}`, blocks: 'cerita' })
+    if (!ok('gemini')) issues.push({ what: 'kunci Gemini', blocks: llm === 'gemini' ? 'cerita, gambar, dan video' : 'gambar dan video' })
+    if (!ok(llm)) {
+      if (llm !== 'gemini') issues.push({ what: `kunci ${llmName(llm)}`, blocks: 'cerita' })
+    } else if (!appSettings.llmModels[llm]) issues.push({ what: `model ${llmName(llm)}`, blocks: 'cerita' })
     // Narration needs just one working voice service; every project can pick either one.
     const tts = ttsReadiness(keys)
     if (!tts.gemini.ok && !tts.elevenlabs.ok) issues.push({ what: 'kunci Gemini atau ElevenLabs', blocks: 'suara narator' })
